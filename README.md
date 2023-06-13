@@ -4,7 +4,7 @@ Pipeline for calling SNPs using Lumpy, Delly, and Manta, then merging with suviv
 
 Note: This pipeline uses the base LumpySV caller. If you are processing more then 50 samples it is owrthwile changing over to [smoove](https://github.com/brentp/smoove).
 
-To see examples of full scripts, including resources requested for each run and version types, please refer to the code PDFs.
+To see examples of full scripts, including resources requested for each run and program version, please refer to the code PDFs.
 
 ## Step 1: Mapping with BWA
 
@@ -95,7 +95,7 @@ echo ${FILE_LIST}
 ${LUMPY}/bin/lumpy -mw 4 -tt 0 ${FILE_LIST} > ${OUT_DIR}/starling_wgs_24NAref_lumpy.vcf
 ```
 
-Running SVtyper: 
+Running SVtyper.
 
 ```
 # create list of BAM
@@ -179,23 +179,7 @@ bcftools view ${OUT_DIR}/merged_rep_geno.bcf -o ${OUT_DIR}/merged_rep_geno.vcf
 
 Manta SV calling requires just a single line 
 
-#!/bin/bash
-#PBS -N 2022-11-10.SVCalling_starlingwgs_manta.pbs
-#PBS -l nodes=1:ppn=16
-#PBS -l mem=120gb
-#PBS -l walltime=48:00:00
-#PBS -j oe
-#PBS -M katarina.stuart@unsw.edu.au
-#PBS -m ae 
-
-# load environment
-source /srv/scratch/z5188231/KStuart.Starling-Aug18/programs/anaconda3/etc/profile.d/conda.sh
-conda activate /srv/scratch/z5188231/KStuart.Starling-Aug18/programs/anaconda3/envs/manta  
-
-# set paths
-GENOME=/srv/scratch/canetoad/Stuart.Starling-Feb20/SV_calling/resources/Svulgaris_genomic.fna
-OUT_DIR=/srv/scratch/canetoad/Stuart.Starling-Feb20/SV_calling/manta
-
+```
 # create list of input BAM files for Manta
 FILE_LIST=""
 for SAMPLE_NUMBER in {1..24}
@@ -212,41 +196,27 @@ configManta.py ${FILE_LIST} --referenceFasta ${GENOME} --runDir ${OUT_DIR}
 
 # run manta
 /srv/scratch/canetoad/Stuart.Starling-Feb20/SV_calling/manta/runWorkflow.py
+```
 
-Fixing inversions
+Fixing inversions (https://github.com/Illumina/manta/blob/master/docs/userGuide/README.md#inversions)
 
-https://github.com/Illumina/manta/blob/master/docs/userGuide/README.md#inversions
-
-source /srv/scratch/z5188231/KStuart.Starling-Aug18/programs/anaconda3/etc/profile.d/conda.sh
-
-conda activate /srv/scratch/z5188231/KStuart.Starling-Aug18/programs/anaconda3/envs/manta  
-
-GENOME=/srv/scratch/z5188231/KStuart.Starling-Aug18/Sv5_AustraliaWGS/genome/Sturnus_vulgaris_2.3.1.simp.fasta 
-
-cd /srv/scratch/z5188231/KStuart.Starling-Aug18/Sv5_AustraliaWGS/data/manta/results/variants
-
-MANTA_INSTALL=/srv/scratch/z5188231/KStuart.Starling-Aug18/programs/anaconda3/envs/manta/share/manta-1.6.0-1/libexec
-
+``
 python $MANTA_INSTALL/convertInversion.py /apps/samtools/1.9/bin/samtools $GENOME diploidSV.vcf > diploidSV_inversions.vcf 
+```
 
+## Step 5: merging calls with survivor
 
+Filter based on how each program assigns SNP call passing scores.
 
-Survivor:
- linking and filtering SVs
-
-cd /srv/scratch/canetoad/Stuart.Starling-Feb20/SV_calling/survivor
-ln -s /srv/scratch/canetoad/Stuart.Starling-Feb20/SV_calling/lumpy/starling_wgs_24NAref_lumpy.gt2000.vcf 
-ln -s /srv/scratch/canetoad/Stuart.Starling-Feb20/SV_calling/delly/merged_rep_geno.vcf 
-ln -s /srv/scratch/canetoad/Stuart.Starling-Feb20/SV_calling/manta/results/variants/diploidSV.vcf
-
-module load vcftools/0.1.16 samtools/1.10
-
+```
 vcftools --vcf starling_wgs_24NAref_lumpy.gt2000.vcf --min-meanDP 5 --recode --recode-INFO-all --out lumpysv_strvar_repeats.gt.named.pass
 vcftools --vcf merged_rep_geno.vcf --remove-filtered-all --recode --recode-INFO-all --out merged_rep_geno.pass
 vcftools --vcf diploidSV.vcf --remove-filtered-all --recode --recode-INFO-all --out diploidSV.pass
+```
 
-Splitting up the currnet SVCF files so we have 1 file per individual PER SVcaller, so I can work/merge with them individually. 
+Splitting up the current SV VCF files so we have 1 file per individual PER SVcaller, so they can be merged individually. 
 
+```
 mkdir split_vcfs
 
 for SAMPLE in $(cat /srv/scratch/canetoad/Stuart.Starling-Feb20/SV_calling/survivor/sampleorder_24indv.txt );
@@ -257,13 +227,12 @@ vcftools --vcf lumpysv_strvar_repeats.gt.named.pass.recode.vcf --indv $SAMPLE --
 vcftools --vcf merged_rep_geno.pass.recode.vcf --indv $SAMPLE --recode --recode-INFO-all --out split_vcfs/${SAMPLE}/merged_geno.${SAMPLE}
 vcftools --vcf diploidSV.pass.recode.vcf --indv $SAMPLE --recode --recode-INFO-all --out split_vcfs/${SAMPLE}/diploidSV.${SAMPLE}
 done
+```
+
 Modifying SURVIVOR pipeline so that we can also incorporate genotype calls into the merging process.
+Splitting up each individual sample's 3 VCF files into het, homref, and homalt & merging across tools with SURVIVOR (but within samples).
 
-Splitting up each individual sample's 3 VCF files into het, homref, and homalt & merging across tools with SURVIVOR (but within samples)
-
-DIR=/srv/scratch/z5188231/KStuart.Starling-Aug18/programs/SURVIVOR/Debug
-
-
+```
 for SAMPLE in $(cat /srv/scratch/canetoad/Stuart.Starling-Feb20/SV_calling/survivor/sampleorder_24indv.txt );
 do
 
@@ -307,24 +276,23 @@ grep -v "^#" ${SAMPLE}_survivor_v2.vcf | wc -l
 cd ../../
 
 done
+```
 
 The homref, het, and homalt VCF files should have at least 2 genotypes (that are the same).
 The final per-sample VCF should have only one genotype in it, because we merged across genotypes. 
 
-Then merge across samples
+Then merge across samples.
 
+```
 cd /srv/scratch/canetoad/Stuart.Starling-Feb20/SV_calling/survivor/split_vcfs
 ls */*_survivor_v2.vcf > allsample_files
 DIR=/srv/scratch/z5188231/KStuart.Starling-Aug18/programs/SURVIVOR/Debug
 ${DIR}/SURVIVOR merge allsample_files 1000 1 1 1 0 30 merged_rep.vcf
+```
 
-Seems like GTs were all carried across properly (i.e. SURVIVOR didn't pull over NaN's when there were GT data available).
+Filtering of the SV VCF file to match SNP filtering parameters.
 
-module load vcftools/0.1.16
+```
 vcftools --vcf merged_rep.vcf --maf 0.03 --max-missing 0.5 --recode --recode-INFO-all --out merged_rep_filtered
-
-vcftools --vcf merged_rep_filtered.recode.vcf --het --out merged_rep_filtered.hetero
-
-VCF=/srv/scratch/z5188231/KStuart.Starling-Aug18/Sv5_AustraliaWGS/data/snp_variants_processed/wgs_variantsgenotyped_filtered_maf005_r2_noIndel_WithIds_thin.recode.vcf
-vcftools --vcf ${VCF} --het --out snps.hetero
+```
 
