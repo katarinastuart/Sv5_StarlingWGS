@@ -2,7 +2,7 @@
 
 Pipeline for calling SNPs using Lumpy, Delly, and Manta, then merging with suvivor and filtering.
 
-Note: This pipeline uses the base LumpySV caller. If you are processing more then 50 samples it is owrthwile changing over to [smoove](https://github.com/brentp/smoove).
+Note: This pipeline uses the base LumpySV caller. If you are processing more then 50 samples it is worthwile changing over to [smoove](https://github.com/brentp/smoove).
 
 To see examples of full scripts, including resources requested for each run and program version, please refer to the code PDFs.
 
@@ -200,7 +200,7 @@ configManta.py ${FILE_LIST} --referenceFasta ${GENOME} --runDir ${OUT_DIR}
 
 Fixing inversions (https://github.com/Illumina/manta/blob/master/docs/userGuide/README.md#inversions)
 
-``
+```
 python $MANTA_INSTALL/convertInversion.py /apps/samtools/1.9/bin/samtools $GENOME diploidSV.vcf > diploidSV_inversions.vcf 
 ```
 
