@@ -280,6 +280,7 @@ done
 
 The homref, het, and homalt VCF files should have at least 2 genotypes (that are the same).
 The final per-sample VCF should have only one genotype in it, because we merged across genotypes. 
+Just keep an eye on whether genotypes are pulled across properly. You can do this by checking sample level missingness before and after merging. I have not inspected this across multiple data sets, but it looks like survivor pulls the genotype from the last column, so you may need to use a quick awk command to make sure that the final colum of your data doesn't have missing genotype information (pull info from one of the first two columns, as they should both have agreeing genotypes in them).
 
 Then merge across samples.
 
