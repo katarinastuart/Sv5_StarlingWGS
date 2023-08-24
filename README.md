@@ -47,6 +47,7 @@ samtools index -@ ${PBS_ARRAY_INDEX} ${OUT_DIR}/${SAMPLE}.sorted.dup.bam
 
 Preprocessing for BWA mem BAM files. Extract the discordant paired-end alignments.
 The samtools view -F1294 option means “do not show reads with flags containing any of these values”, effectively excluding reads with the checked characteristics from the ouput.
+If you have more than 50 samples I would recommend moving to the program SMOOVE, which is a wrapper for lumpy.
 
 ```
 samtools view -b -F 1294 ${BAM} > ${DIR}/${SAMPLE}.discordants.unsorted.bam
